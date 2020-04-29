@@ -1,2 +1,5 @@
 [workspace]
 members = ["client", "server", "common"]
+
+[patch.crates-io]
+ash = { git = "https://github.com/MaikKlein/ash.git", rev = "bb720dd" }

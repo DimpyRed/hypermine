@@ -15,7 +15,7 @@ tracing = "0.1.10"
 ash = "0.30"
 lahar = { git = "https://github.com/Ralith/lahar", rev = "37df360cd9da4a9fe74b4069ffd0d4ca1b85a3f1" }
 winit = "0.22"
-ash-window = "0.3.0"
+ash-window = { git = "https://github.com/norse-rs/ash-window", rev = "917d2e6326dbe9383e867c5b072fafac7f40d652" }
 directories = "2.0.2"
 vk-shader-macros = "0.2.2"
 na = { package = "nalgebra", version = "0.19" }
