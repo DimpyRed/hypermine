@@ -72,7 +72,10 @@ impl Voxels {
         }
     }
 
-    /// Determine what to render and record the appropriate transfer commands
+    /// Determine what to render and stage chunk transforms
+    ///
+    /// Surface extraction commands are written to `cmd`, and will be presumed complete for the next
+    /// (not current) frame.
     pub unsafe fn prepare(
         &mut self,
         device: &Device,
@@ -123,7 +126,7 @@ impl Voxels {
             use Chunk::*;
             for chunk in Vertex::iter() {
                 // Fetch existing chunk, or extract surface of new chunk
-                let slot = match sim
+                match sim
                     .graph
                     .get_mut(node)
                     .as_mut()
@@ -150,13 +153,16 @@ impl Voxels {
                         ref mut surface,
                         ref voxels,
                     } => match (surface, voxels) {
-                        (&mut Some(x), _) => {
-                            // Render an extracted surface
-                            self.states.get_mut(x).refcount += 1;
-                            x
+                        (&mut Some(slot), _) => {
+                            // Render an already-extracted surface
+                            self.states.get_mut(slot).refcount += 1;
+                            frame.drawn.push(slot);
+                            // Transfer transform
+                            frame.surface.transforms_mut()[slot.0 as usize] =
+                                node_transform * chunk.chunk_to_node().map(|x| x as f32);
                         }
                         (&mut ref mut surface @ None, &VoxelData::Dense(ref data)) => {
-                            // Extract a surface
+                            // Extract a surface so it can be drawn in future frames
                             if frame.extracted.len() == self.config.chunk_load_parallelism as usize
                             {
                                 continue;
@@ -176,7 +182,7 @@ impl Voxels {
                             let slot = self.states.insert(SurfaceState {
                                 node,
                                 chunk,
-                                refcount: 1,
+                                refcount: 0,
                             });
                             *surface = Some(slot);
                             let storage = self.extraction_scratch.storage(scratch_slot);
@@ -207,15 +213,10 @@ impl Voxels {
                                     self.surfaces.face_offset(slot.0),
                                 ),
                             );
-                            slot
                         }
                         (None, &VoxelData::Solid(_)) => continue,
                     },
-                };
-                frame.drawn.push(slot);
-                // Transfer transform
-                frame.surface.transforms_mut()[slot.0 as usize] =
-                    node_transform * chunk.chunk_to_node().map(|x| x as f32);
+                }
             }
         }
         timing!("frame.cpu.voxels.node_scan", node_scan_started.elapsed());
