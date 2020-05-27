@@ -77,6 +77,7 @@ impl NodeState {
                 slopeiness: 3,
                 blockiness: 0,
                 flatness: 25,
+                is_chasm: false,
             },
         }
     }
@@ -446,6 +447,7 @@ struct EnviroFactors {
     slopeiness: i64,
     blockiness: i64,
     flatness: i64,
+    is_chasm: bool
 }
 impl EnviroFactors {
     fn varied_from(parent: Self, spice: u64) -> Self {
@@ -478,11 +480,12 @@ impl EnviroFactors {
             slopeiness: a.slopeiness + (b.slopeiness - ab.slopeiness),
             blockiness: a.blockiness + (b.blockiness - ab.blockiness),
             flatness: a.flatness + (b.flatness - ab.flatness),
+            is_chasm: a.is_chasm ^ b.is_chasm ^ ab.is_chasm,
         }
     }
 }
-impl Into<(f64, f64, f64, f64, f64, f64)> for EnviroFactors {
-    fn into(self) -> (f64, f64, f64, f64, f64, f64) {
+impl Into<(f64, f64, f64, f64, f64, f64, bool)> for EnviroFactors {
+    fn into(self) -> (f64, f64, f64, f64, f64, f64, bool) {
         (
             self.max_elevation as f64,
             self.temperature as f64,
@@ -490,6 +493,7 @@ impl Into<(f64, f64, f64, f64, f64, f64)> for EnviroFactors {
             self.slopeiness as f64,
             self.blockiness as f64,
             self.flatness as f64,
+            self.is_chasm as bool
         )
     }
 }
@@ -500,6 +504,7 @@ struct ChunkIncidentEnviroFactors {
     slopeinesses: [f64; 8],
     blockinesses: [f64; 8],
     flatness: [f64; 8],
+    is_chasm: [bool; 8],
 }
 
 /// Returns the max_elevation values for the nodes that are incident to this chunk,
@@ -518,14 +523,14 @@ fn chunk_incident_enviro_factors(
 
     // this is a bit cursed, but I don't want to collect into a vec because perf,
     // and I can't just return an iterator because then something still references graph.
-    let (e1, t1, r1, h1, b1, f1) = i.next()?.into();
-    let (e2, t2, r2, h2, b2, f2) = i.next()?.into();
-    let (e3, t3, r3, h3, b3, f3) = i.next()?.into();
-    let (e4, t4, r4, h4, b4, f4) = i.next()?.into();
-    let (e5, t5, r5, h5, b5, f5) = i.next()?.into();
-    let (e6, t6, r6, h6, b6, f6) = i.next()?.into();
-    let (e7, t7, r7, h7, b7, f7) = i.next()?.into();
-    let (e8, t8, r8, h8, b8, f8) = i.next()?.into();
+    let (e1, t1, r1, h1, b1, f1, c1) = i.next()?.into();
+    let (e2, t2, r2, h2, b2, f2, c2) = i.next()?.into();
+    let (e3, t3, r3, h3, b3, f3, c3) = i.next()?.into();
+    let (e4, t4, r4, h4, b4, f4, c4) = i.next()?.into();
+    let (e5, t5, r5, h5, b5, f5, c5) = i.next()?.into();
+    let (e6, t6, r6, h6, b6, f6, c6) = i.next()?.into();
+    let (e7, t7, r7, h7, b7, f7, c7) = i.next()?.into();
+    let (e8, t8, r8, h8, b8, f8, c8) = i.next()?.into();
 
     Some(ChunkIncidentEnviroFactors {
         max_elevations: [e1, e2, e3, e4, e5, e6, e7, e8],
@@ -534,6 +539,7 @@ fn chunk_incident_enviro_factors(
         slopeinesses: [h1, h2, h3, h4, h5, h6, h7, h8],
         blockinesses: [b1, b2, b3, b4, b5, b6, b7, b8],
         flatness: [f1, f2, f3, f4, f5, f6, f7, f8],
+        is_chasm: [c1, c2, c3, c4, c5, c6, c7, c8],
     })
 }
 
