@@ -447,7 +447,7 @@ struct EnviroFactors {
     slopeiness: i64,
     blockiness: i64,
     flatness: i64,
-    is_chasm: bool
+    is_chasm: bool,
 }
 impl EnviroFactors {
     fn varied_from(parent: Self, spice: u64) -> Self {
@@ -470,6 +470,19 @@ impl EnviroFactors {
             temperature: parent.temperature + rng.sample(&plus_or_minus_one),
             rainfall: parent.rainfall + rng.sample(&plus_or_minus_one),
             blockiness: parent.blockiness + rng.sample(&plus_or_minus_one),
+            is_chasm: if parent.is_chasm {
+                if rng.gen_ratio(1, 3) {
+                    false
+                } else {
+                    true
+                }
+            } else {
+                if rng.gen_ratio(1, 24) {
+                    true
+                } else {
+                    false
+                }
+            },
         }
     }
     fn continue_from(a: Self, b: Self, ab: Self) -> Self {
@@ -493,7 +506,7 @@ impl Into<(f64, f64, f64, f64, f64, f64, bool)> for EnviroFactors {
             self.slopeiness as f64,
             self.blockiness as f64,
             self.flatness as f64,
-            self.is_chasm as bool
+            self.is_chasm as bool,
         )
     }
 }
