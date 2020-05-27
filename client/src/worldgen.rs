@@ -466,7 +466,10 @@ impl EnviroFactors {
             } else {
                 0
             }
-        } else if rng.gen_ratio(1, 2) {
+        } else if parent.chasam_deficit > 4294967296 {
+            0
+        }
+        else if rng.gen_ratio(1, 2) {
             parent.chasam_deficit * rng.sample(&plus_or_minus_one)
         } else {
             0
