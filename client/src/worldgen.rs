@@ -39,6 +39,7 @@ enum NodeStateRoad {
     West,
     DeepWest,
 }
+use rand::distributions::WeightedIndex;
 use NodeStateRoad::*;
 
 impl NodeStateRoad {
@@ -75,8 +76,8 @@ impl NodeState {
                 temperature: 0,
                 rainfall: 0,
                 slopeiness: 3,
-                blockiness: 0,
-                flatness: 25,
+                blockiness: 20,
+                flatness: 2,
             },
         }
     }
@@ -455,19 +456,31 @@ impl EnviroFactors {
             .max(0)
             .min(40);
         let slopeiness = parent.slopeiness + rng.sample(&plus_or_minus_one);
+        let blockiness = parent.blockiness + rng.sample(&plus_or_minus_one);
+        let jump_size = if blockiness <= 0 {
+            //amount to change elevation going from node to node
+            1.0
+        } else {
+            (1.0 + 1.5_f64.powf((blockiness) as f64)) / 2.0
+        };
+        //weight is [chance of not changing elevation, chance of changing elevation]
+        let jump_weights = [(1.0 - 1.0 / jump_size, 0_f64), (1.0 / jump_size, jump_size)];
+        let jump_distribution =
+            WeightedIndex::new(jump_weights.iter().map(|jump_weights| jump_weights.1)).unwrap();
         Self {
             slopeiness,
             flatness,
+            blockiness,
             max_elevation: parent.max_elevation
                 + ((((3 - parent.slopeiness.rem_euclid(7)) as f64)
                     * (1.0 - (((parent.flatness as f64) - 20.0) / 10.0).tanh())
                     + ((3 - slopeiness.rem_euclid(7)) as f64)
-                        * (1.0 - (((flatness as f64) - 20.0) / 10.0).tanh()))
+                        * (1.0 - (((flatness as f64) - 20.0) / 10.0).tanh())
+                        * jump_weights[rng.sample(&jump_distribution)].0)
                     as i64)
                     * rng.sample(&plus_or_minus_one),
             temperature: parent.temperature + rng.sample(&plus_or_minus_one),
             rainfall: parent.rainfall + rng.sample(&plus_or_minus_one),
-            blockiness: parent.blockiness + rng.sample(&plus_or_minus_one),
         }
     }
     fn continue_from(a: Self, b: Self, ab: Self) -> Self {
