@@ -76,7 +76,8 @@ impl NodeState {
                 rainfall: 0,
                 slopeiness: 3,
                 blockiness: 0,
-                flatness: 25,
+                flatness: 35,
+                chasam_deficit: 0,
             },
         }
     }
@@ -446,25 +447,43 @@ struct EnviroFactors {
     slopeiness: i64,
     blockiness: i64,
     flatness: i64,
+    chasam_deficit: i64,
 }
 impl EnviroFactors {
     fn varied_from(parent: Self, spice: u64) -> Self {
+        use rand_distr::Normal;
+
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(spice);
         let plus_or_minus_one = Uniform::new_inclusive(-1, 1);
         let flatness = (parent.flatness + rng.sample(&plus_or_minus_one))
             .max(0)
             .min(40);
         let slopeiness = parent.slopeiness + rng.sample(&plus_or_minus_one);
+        let chasam_delta = if parent.chasam_deficit == 0 {
+            if rng.gen_ratio(1, 20) {
+                //rng.sample(&Normal::new(-23.0, 20.0).unwrap()) as i64
+                - 30
+            } else {
+                0
+            }
+        } else if rng.gen_ratio(1, 2) {
+            parent.chasam_deficit
+        } else {
+            0
+        };
+        let chasam_deficit = parent.chasam_deficit - chasam_delta;
         Self {
             slopeiness,
             flatness,
+            chasam_deficit,
             max_elevation: parent.max_elevation
                 + ((((3 - parent.slopeiness.rem_euclid(7)) as f64)
                     * (1.0 - (((parent.flatness as f64) - 20.0) / 10.0).tanh())
                     + ((3 - slopeiness.rem_euclid(7)) as f64)
                         * (1.0 - (((flatness as f64) - 20.0) / 10.0).tanh()))
                     as i64)
-                    * rng.sample(&plus_or_minus_one),
+                    * rng.sample(&plus_or_minus_one)
+                + chasam_delta,
             temperature: parent.temperature + rng.sample(&plus_or_minus_one),
             rainfall: parent.rainfall + rng.sample(&plus_or_minus_one),
             blockiness: parent.blockiness + rng.sample(&plus_or_minus_one),
@@ -478,6 +497,7 @@ impl EnviroFactors {
             slopeiness: a.slopeiness + (b.slopeiness - ab.slopeiness),
             blockiness: a.blockiness + (b.blockiness - ab.blockiness),
             flatness: a.flatness + (b.flatness - ab.flatness),
+            chasam_deficit: a.chasam_deficit + (b.chasam_deficit - ab.chasam_deficit),
         }
     }
 }
