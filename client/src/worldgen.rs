@@ -142,6 +142,8 @@ pub struct ChunkParams {
     is_road: bool,
     /// Whether this chunk contains a section of the road's supports
     is_road_support: bool,
+    ///whether this place should be dug down deep
+    is_chasm: bool,
 }
 
 impl ChunkParams {
@@ -155,6 +157,7 @@ impl ChunkParams {
             chunk,
             env: chunk_incident_enviro_factors(graph, node, chunk)?,
             surface: state.surface,
+            is_chasm: state.enviro.is_chasm,
             is_road: state.kind == Sky
                 && ((state.road_state == East) || (state.road_state == West)),
             is_road_support: ((state.kind == Land) || (state.kind == DeepLand))
@@ -182,7 +185,8 @@ impl ChunkParams {
         let terracing_scale = 5.0; // This is not wavelength in number of blocks
         let elev_floor = (elev_raw / terracing_scale).floor();
         let elev_rem = elev_raw / terracing_scale - elev_floor;
-        let elev = terracing_scale * elev_floor + serp(0.0, terracing_scale, elev_rem, threshold);
+        let elev = terracing_scale * elev_floor + serp(0.0, terracing_scale, elev_rem, threshold)
+            - (self.is_chasm as i64 as f64) * 30.0;
 
         let mut voxel_mat;
         let max_e;
