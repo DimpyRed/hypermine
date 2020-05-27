@@ -142,8 +142,8 @@ pub struct ChunkParams {
     is_road: bool,
     /// Whether this chunk contains a section of the road's supports
     is_road_support: bool,
-    ///whether this place should be dug down deep
-    is_chasm: bool,
+    ///float verion of self.env.is_chasm
+    is_chasm: [f64; 8],
 }
 
 impl ChunkParams {
@@ -152,12 +152,13 @@ impl ChunkParams {
     /// Returns `None` if an unpopulated node is needed.
     pub fn new(dimension: u8, graph: &DualGraph, node: NodeId, chunk: Vertex) -> Option<Self> {
         let state = &graph.get(node).as_ref()?.state;
+        let env = chunk_incident_enviro_factors(graph, node, chunk)?;
         Some(Self {
             dimension,
             chunk,
-            env: chunk_incident_enviro_factors(graph, node, chunk)?,
+            env,
             surface: state.surface,
-            is_chasm: state.enviro.is_chasm,
+            is_chasm: env.is_chasm.Map(|&e| e as i64 as f64),
             is_road: state.kind == Sky
                 && ((state.road_state == East) || (state.road_state == West)),
             is_road_support: ((state.kind == Land) || (state.kind == DeepLand))
@@ -176,6 +177,7 @@ impl ChunkParams {
         let temp = trilerp(&self.env.temperatures, cube_coords);
         let slope = trilerp(&self.env.slopeinesses, cube_coords);
         let flat = trilerp(&self.env.flatness, cube_coords);
+        let chasm = trilerp(&self.is_chasm, cube_coords);
 
         // block is a real number, threshold is in (0, 0.2) and biased towards 0
         // This causes the level of terrain bumpiness to vary over space.
@@ -186,7 +188,7 @@ impl ChunkParams {
         let elev_floor = (elev_raw / terracing_scale).floor();
         let elev_rem = elev_raw / terracing_scale - elev_floor;
         let elev = terracing_scale * elev_floor + serp(0.0, terracing_scale, elev_rem, threshold)
-            - (self.is_chasm as i64 as f64) * 30.0;
+            - chasm * 30.0;
 
         let mut voxel_mat;
         let max_e;
