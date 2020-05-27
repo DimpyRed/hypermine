@@ -467,7 +467,7 @@ impl EnviroFactors {
                 0
             }
         } else if rng.gen_ratio(1, 2) {
-            parent.chasam_deficit
+            parent.chasam_deficit * rng.sample(&plus_or_minus_one)
         } else {
             0
         };
