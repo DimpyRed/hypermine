@@ -175,6 +175,7 @@ impl ChunkParams {
         let slope = trilerp(&self.env.slopeinesses, cube_coords);
         let flat = trilerp(&self.env.flatness, cube_coords);
 
+
         // block is a real number, threshold is in (0, 0.2) and biased towards 0
         // This causes the level of terrain bumpiness to vary over space.
         let block = trilerp(&self.env.blockinesses, cube_coords);
@@ -460,21 +461,22 @@ impl EnviroFactors {
         let flatness = (parent.flatness + rng.sample(&plus_or_minus_one))
             .max(0)
             .min(40);
-        let slopeiness = parent.slopeiness + rng.sample(&plus_or_minus_one);
+        let slopeiness =  parent.slopeiness + rng.sample(&plus_or_minus_one);
 
         let chasm_swap = if parent.is_chasm {
-            rng.gen_ratio(1, 120)
+            rng.gen_ratio(1, 2)
         } else {
-            rng.gen_ratio(4, 5)
+            rng.gen_ratio(1, 20)
         };
         let is_chasm = parent.is_chasm ^ chasm_swap;
 
         let chasam_deficit = if is_chasm {
             if chasm_swap {
                 //rng.sample(&Normal::new(-23.0, 20.0).unwrap()) as i64
-                -10
+                - 5
             } else {
                 parent.chasam_deficit
+
             }
         } else {
             0
@@ -494,33 +496,30 @@ impl EnviroFactors {
                     as i64)
                     * rng.sample(&plus_or_minus_one)
                 + chasam_delta,
-            temperature: parent.temperature + rng.sample(&plus_or_minus_one),
+            temperature: parent.temperature + rng.sample(&plus_or_minus_one)
+                + 30 * (chasm_swap as i64) * (1 - 2*(is_chasm as i64)), //for debug purposes.
             rainfall: parent.rainfall + rng.sample(&plus_or_minus_one),
             blockiness: parent.blockiness + rng.sample(&plus_or_minus_one),
         }
     }
     fn continue_from(a: Self, b: Self, ab: Self) -> Self {
         let is_chasm = (a.chasam_deficit != 0) ^ (b.chasam_deficit != 0) ^ (ab.chasam_deficit != 0);
+        let parents_chasm_deficit = a.chasam_deficit + (b.chasam_deficit - ab.chasam_deficit);
+        let chasam_deficit = if is_chasm {
+            parents_chasm_deficit
+        } else {
+            0
+        };
         Self {
-            max_elevation: a.max_elevation + (b.max_elevation - ab.max_elevation),
+            max_elevation: a.max_elevation + (b.max_elevation - ab.max_elevation)
+                + chasam_deficit - parents_chasm_deficit,
             temperature: a.temperature + (b.temperature - ab.temperature),
             rainfall: a.rainfall + (b.rainfall - ab.rainfall),
             slopeiness: a.slopeiness + (b.slopeiness - ab.slopeiness),
             blockiness: a.blockiness + (b.blockiness - ab.blockiness),
             flatness: a.flatness + (b.flatness - ab.flatness),
             is_chasm,
-            chasam_deficit: if is_chasm {
-                if a.is_chasm {
-                    a.chasam_deficit
-                } else if b.is_chasm {
-                    b.chasam_deficit
-                } else {
-                    assert!(ab.is_chasm);
-                    ab.chasam_deficit
-                }
-            } else {
-                0
-            },
+            chasam_deficit,
         }
     }
 }
