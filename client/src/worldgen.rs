@@ -78,6 +78,7 @@ impl NodeState {
                 blockiness: 0,
                 flatness: 35,
                 chasam_deficit: 0,
+                is_chasm: false,
             },
         }
     }
@@ -448,6 +449,7 @@ struct EnviroFactors {
     blockiness: i64,
     flatness: i64,
     chasam_deficit: i64,
+    is_chasm: bool,
 }
 impl EnviroFactors {
     fn varied_from(parent: Self, spice: u64) -> Self {
@@ -459,25 +461,31 @@ impl EnviroFactors {
             .max(0)
             .min(40);
         let slopeiness = parent.slopeiness + rng.sample(&plus_or_minus_one);
-        let chasam_delta = if parent.chasam_deficit == 0 {
-            if rng.gen_ratio(1, 20) {
+
+        let chasm_swap = if parent.is_chasm {
+            rng.gen_ratio(1, 120)
+        } else {
+            rng.gen_ratio(4, 5)
+        };
+        let is_chasm = parent.is_chasm ^ chasm_swap;
+
+        let chasam_deficit = if is_chasm {
+            if chasm_swap {
                 //rng.sample(&Normal::new(-23.0, 20.0).unwrap()) as i64
-                -30
+                -10
             } else {
-                0
+                parent.chasam_deficit
             }
-        } else if parent.chasam_deficit > 4294967296 {
-            0
-        } else if rng.gen_ratio(1, 2) {
-            parent.chasam_deficit * rng.sample(&plus_or_minus_one)
         } else {
             0
         };
-        let chasam_deficit = parent.chasam_deficit - chasam_delta;
+
+        let chasam_delta = chasam_deficit - parent.chasam_deficit;
         Self {
             slopeiness,
             flatness,
             chasam_deficit,
+            is_chasm,
             max_elevation: parent.max_elevation
                 + ((((3 - parent.slopeiness.rem_euclid(7)) as f64)
                     * (1.0 - (((parent.flatness as f64) - 20.0) / 10.0).tanh())
@@ -492,6 +500,7 @@ impl EnviroFactors {
         }
     }
     fn continue_from(a: Self, b: Self, ab: Self) -> Self {
+        let is_chasm = (a.chasam_deficit != 0) ^ (b.chasam_deficit != 0) ^ (ab.chasam_deficit != 0);
         Self {
             max_elevation: a.max_elevation + (b.max_elevation - ab.max_elevation),
             temperature: a.temperature + (b.temperature - ab.temperature),
@@ -499,11 +508,16 @@ impl EnviroFactors {
             slopeiness: a.slopeiness + (b.slopeiness - ab.slopeiness),
             blockiness: a.blockiness + (b.blockiness - ab.blockiness),
             flatness: a.flatness + (b.flatness - ab.flatness),
-            chasam_deficit: if (a.chasam_deficit != 0)
-                ^ (b.chasam_deficit != 0)
-                ^ (ab.chasam_deficit != 0)
-            {
-                a.chasam_deficit.max(b.chasam_deficit).max(ab.chasam_deficit)
+            is_chasm,
+            chasam_deficit: if is_chasm {
+                if a.is_chasm {
+                    a.chasam_deficit
+                } else if b.is_chasm {
+                    b.chasam_deficit
+                } else {
+                    assert!(ab.is_chasm);
+                    ab.chasam_deficit
+                }
             } else {
                 0
             },
