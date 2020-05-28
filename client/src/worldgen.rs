@@ -462,14 +462,13 @@ impl EnviroFactors {
         let chasam_delta = if parent.chasam_deficit == 0 {
             if rng.gen_ratio(1, 20) {
                 //rng.sample(&Normal::new(-23.0, 20.0).unwrap()) as i64
-                - 30
+                -30
             } else {
                 0
             }
         } else if parent.chasam_deficit > 4294967296 {
             0
-        }
-        else if rng.gen_ratio(1, 2) {
+        } else if rng.gen_ratio(1, 2) {
             parent.chasam_deficit * rng.sample(&plus_or_minus_one)
         } else {
             0
@@ -500,7 +499,14 @@ impl EnviroFactors {
             slopeiness: a.slopeiness + (b.slopeiness - ab.slopeiness),
             blockiness: a.blockiness + (b.blockiness - ab.blockiness),
             flatness: a.flatness + (b.flatness - ab.flatness),
-            chasam_deficit: a.chasam_deficit + (b.chasam_deficit - ab.chasam_deficit),
+            chasam_deficit: if (a.chasam_deficit != 0)
+                ^ (b.chasam_deficit != 0)
+                ^ (ab.chasam_deficit != 0)
+            {
+                a.chasam_deficit.max(b.chasam_deficit).max(ab.chasam_deficit)
+            } else {
+                0
+            },
         }
     }
 }
