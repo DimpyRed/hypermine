@@ -596,6 +596,7 @@ mod test {
     use crate::sim::Node;
     use approx::*;
     use crate::Chunks;
+    use core::panicking::panic;
 
     const CHUNK_SIZE: u8 = 12;
 
