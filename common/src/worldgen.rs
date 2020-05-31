@@ -594,8 +594,8 @@ fn hash(a: u64, b: u64) -> u64 {
 mod test {
     use super::*;
     use crate::sim::Node;
-    use approx::*;
     use crate::Chunks;
+    use approx::*;
     use core::panicking::panic;
 
     const CHUNK_SIZE: u8 = 12;
