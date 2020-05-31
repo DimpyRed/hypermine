@@ -595,7 +595,7 @@ mod test {
     use super::*;
     use crate::sim::Node;
     use approx::*;
-    use common::Chunks;
+    use crate::Chunks;
 
     const CHUNK_SIZE: u8 = 12;
 
