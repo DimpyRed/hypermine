@@ -1,7 +1,7 @@
 use rand::{distributions::Uniform, Rng, SeedableRng};
 
 use crate::sim::{DualGraph, VoxelData};
-use common::{
+use {
     dodeca::{Side, Vertex},
     graph::NodeId,
     world::Material,
