@@ -279,7 +279,7 @@ impl ChunkParams {
         let horizontal_distance = plane.distance_to_chunk(self.chunk, &center);
 
         if horizontal_distance < 0.3 && self.trussing_at(coords) {
-            Some(Material::WoodPlanks)
+            Some(Material::PlainVines)
         } else {
             None
         }
