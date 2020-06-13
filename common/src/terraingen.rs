@@ -20,7 +20,7 @@ impl VoronoiInfo {
             VoronoiInfo::new(Material::Graveldirt, 0.0, 2.0, 0.0),
             VoronoiInfo::new(Material::Dirt, 0.0, 2.5, 0.0),
             VoronoiInfo::new(Material::Grass, 0.0, 3.5, 0.0),
-            VoronoiInfo::new(Material::Flowergrass, 0.0, 4.75, 0.0),
+            VoronoiInfo::new(Material::Flowergrass, 0.0, 4.75, -0.5),
 
             VoronoiInfo::new(Material::Greystone, 0.0, -3.5, -4.0),
             VoronoiInfo::new(Material::Redstone, 0.0, 2.5, 4.0),
@@ -29,12 +29,12 @@ impl VoronoiInfo {
             VoronoiInfo::new(Material::GreySand, 0.0, 0.0, 4.0),
             VoronoiInfo::new(Material::Sand, 0.0, 2.0, 5.0),
             VoronoiInfo::new(Material::Redsand, 0.0, 2.5, 4.0),
-            VoronoiInfo::new(Material::Mud, 0.0, 3.75, 5.0),
+            VoronoiInfo::new(Material::Mud, 0.0, 5.0, 4.5),
 
             VoronoiInfo::new(Material::Lava, 0.0, -2.0, 10.0),
 
             VoronoiInfo::new(Material::Ice, 0.0, 5.0, -6.0),
-            VoronoiInfo::new(Material::Snow, 1.0, 2.5, -5.0),
+            VoronoiInfo::new(Material::Snow, 5.0, 2.5, -5.0),
         ];
 
         let mut voxel_mat: Material;
