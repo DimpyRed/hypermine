@@ -76,7 +76,7 @@ impl NodeState {
                 rainfall: 4,
                 slopeiness: 3,
                 blockiness: 0,
-                flatness: 25,
+                flatness: 10,
             },
         }
     }
@@ -127,6 +127,14 @@ impl NodeState {
         }
     }
 }
+
+fn slopeiness_elevation_boost(slope: f64, flat: f64) -> f64 {
+    let x = (slope.rem_euclid(7.0) - 3.5).abs();
+    -(x.powi(2) + 1.75_f64.powi(2)) * (flat - 40.0) / 40.0
+
+}
+
+
 
 /// Data needed to generate a chunk
 pub struct ChunkParams {
@@ -183,7 +191,7 @@ impl ChunkParams {
         let terracing_scale = 5.0; // This is not wavelength in number of blocks
         let elev_floor = (elev_raw / terracing_scale).floor();
         let elev_rem = elev_raw / terracing_scale - elev_floor;
-        let elev = terracing_scale * elev_floor + serp(0.0, terracing_scale, elev_rem, threshold);
+        let elev = terracing_scale * elev_floor + serp(0.0, terracing_scale, elev_rem, threshold) + slopeiness_elevation_boost(slope, flat);
 
         let mut voxel_mat;
         let max_e;
@@ -343,7 +351,7 @@ impl ChunkParams {
     /// Generate voxels making up the chunk
     pub fn generate_voxels(&self) -> VoxelData {
         // Determine whether this chunk might contain a boundary between solid and void
-        let mut me_min = self.env.max_elevations[0];
+        let mut me_min = self.env.max_elevations[0] ;
         let mut me_max = self.env.max_elevations[0];
         for &me in &self.env.max_elevations[1..] {
             me_min = me_min.min(me);
@@ -352,11 +360,11 @@ impl ChunkParams {
         // Maximum difference between elevations at the center of a chunk and any other point in the chunk
         // TODO: Compute what this actually is, current value is a guess! Real one must be > 0.6
         // empirically.
-        const ELEVATION_MARGIN: f64 = 0.7;
+        const ELEVATION_MARGIN: f64 = 2.0;
         let center_elevation = self
             .surface
             .distance_to_chunk(self.chunk, &na::Vector3::repeat(0.5));
-        if (center_elevation - ELEVATION_MARGIN > me_max / ELEVATION_SCALE)
+        if (center_elevation - ELEVATION_MARGIN > me_max / ELEVATION_SCALE )
             && !(self.is_road || self.is_road_support)
         {
             // The whole chunk is above ground and not part of the road
@@ -502,12 +510,7 @@ impl EnviroFactors {
             slopeiness,
             flatness,
             max_elevation: parent.max_elevation
-                + ((((3 - parent.slopeiness.rem_euclid(7)) as f64)
-                    * (1.0 - (((parent.flatness as f64) - 20.0) / 10.0).tanh())
-                    + ((3 - slopeiness.rem_euclid(7)) as f64)
-                        * (1.0 - (((flatness as f64) - 20.0) / 10.0).tanh()))
-                    as i64)
-                    * rng.sample(&plus_or_minus_one),
+                + rng.sample(&plus_or_minus_one),
             temperature: parent.temperature + rng.sample(&plus_or_minus_one),
             rainfall: parent.rainfall + rng.sample(&plus_or_minus_one),
             blockiness: parent.blockiness + rng.sample(&plus_or_minus_one),
