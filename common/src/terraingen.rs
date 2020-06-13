@@ -31,7 +31,7 @@ impl VoronoiInfo {
             VoronoiInfo::new(Material::Redsand, 0.0, 2.5, 4.0),
             VoronoiInfo::new(Material::Mud, 0.0, 5.0, 4.5),
 
-            VoronoiInfo::new(Material::Lava, 0.0, -2.0, 10.0),
+            VoronoiInfo::new(Material::Lava, 0.0, -5.0, 10.0),
 
             VoronoiInfo::new(Material::Ice, 0.0, 5.0, -6.0),
             VoronoiInfo::new(Material::Snow, 5.0, 2.5, -5.0),
