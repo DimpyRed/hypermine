@@ -436,7 +436,7 @@ impl EnviroFactors {
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(spice);
         let unif = Uniform::new_inclusive(-1.0, 1.0);
         let flatness = (parent.flatness + rng.sample(&unif)).max(-20.0).min(20.0);
-        let slopeiness = 0.95 * parent.slopeiness + rng.sample(&unif);
+        let slopeiness = parent.slopeiness + rng.sample(&unif);
         let elevation = parent.elevation
             + ((3.0 - parent.slopeiness.rem_euclid(7.0)) * (1.0 - (parent.flatness / 10.0).tanh())
                 + (3.0 - slopeiness.rem_euclid(7.0)) * (1.0 - (flatness / 10.0).tanh()))
@@ -446,9 +446,9 @@ impl EnviroFactors {
             slopeiness,
             flatness,
             elevation,
-            temperature: 0.95 * parent.temperature + rng.sample(&unif),
-            rainfall: 0.95 * parent.rainfall + rng.sample(&unif),
-            blockiness: 0.95 * parent.blockiness + rng.sample(&unif),
+            temperature: parent.temperature + rng.sample(&unif),
+            rainfall: parent.rainfall + rng.sample(&unif),
+            blockiness: parent.blockiness + rng.sample(&unif),
         }
     }
     fn continue_from(a: Self, b: Self, ab: Self) -> Self {
