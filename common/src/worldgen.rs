@@ -78,6 +78,7 @@ impl NodeState {
                 blockiness: 0,
                 flatness: 25,
                 bump_phase: 0,
+                bump_amp: 1,
             },
         }
     }
@@ -176,6 +177,7 @@ impl ChunkParams {
         let slope = trilerp(&self.env.slopeinesses, cube_coords);
         let flat = trilerp(&self.env.flatness, cube_coords);
         let bump = trilerp(&self.env.bump_phases, cube_coords);
+        let amp = trilerp(&self.env.bump_amps, cube_coords);
 
         // block is a real number, threshold is in (0, 0.2) and biased towards 0
         // This causes the level of terrain bumpiness to vary over space.
@@ -492,6 +494,7 @@ struct EnviroFactors {
     blockiness: i64,
     flatness: i64,
     bump_phase: i64,
+    bump_amp: i64,
 }
 impl EnviroFactors {
     fn varied_from(parent: Self, spice: u64) -> Self {
@@ -517,6 +520,8 @@ impl EnviroFactors {
             //too lazy to import a proper distribution
             bump_phase: parent.bump_phase + rng.sample(&plus_or_minus_one)
                 + 2 * rng.sample(&plus_or_minus_one) + 4 *rng.sample(&plus_or_minus_one),
+            bump_amp: parent.bump_amp + rng.sample(&plus_or_minus_one)
+                + 2 * rng.sample(&plus_or_minus_one) + 4 *rng.sample(&plus_or_minus_one),
         }
     }
     fn continue_from(a: Self, b: Self, ab: Self) -> Self {
@@ -531,8 +536,8 @@ impl EnviroFactors {
         }
     }
 }
-impl Into<(f64, f64, f64, f64, f64, f64, f64)> for EnviroFactors {
-    fn into(self) -> (f64, f64, f64, f64, f64, f64, f64) {
+impl Into<(f64, f64, f64, f64, f64, f64, f64, f64)> for EnviroFactors {
+    fn into(self) -> (f64, f64, f64, f64, f64, f64, f64, f64) {
         (
             self.max_elevation as f64,
             self.temperature as f64,
@@ -541,6 +546,7 @@ impl Into<(f64, f64, f64, f64, f64, f64, f64)> for EnviroFactors {
             self.blockiness as f64,
             self.flatness as f64,
             self.bump_phase as f64,
+            self.bump_amp as f64,
         )
     }
 }
@@ -552,6 +558,7 @@ struct ChunkIncidentEnviroFactors {
     blockinesses: [f64; 8],
     flatness: [f64; 8],
     bump_phases: [f64; 8],
+    bump_amps: [f64; 8],
 }
 
 /// Returns the max_elevation values for the nodes that are incident to this chunk,
@@ -570,14 +577,14 @@ fn chunk_incident_enviro_factors(
 
     // this is a bit cursed, but I don't want to collect into a vec because perf,
     // and I can't just return an iterator because then something still references graph.
-    let (e1, t1, r1, h1, b1, f1, p1) = i.next()?.into();
-    let (e2, t2, r2, h2, b2, f2, p2) = i.next()?.into();
-    let (e3, t3, r3, h3, b3, f3, p3) = i.next()?.into();
-    let (e4, t4, r4, h4, b4, f4, p4) = i.next()?.into();
-    let (e5, t5, r5, h5, b5, f5, p5) = i.next()?.into();
-    let (e6, t6, r6, h6, b6, f6, p6) = i.next()?.into();
-    let (e7, t7, r7, h7, b7, f7, p7) = i.next()?.into();
-    let (e8, t8, r8, h8, b8, f8, p8) = i.next()?.into();
+    let (e1, t1, r1, h1, b1, f1, p1, a1) = i.next()?.into();
+    let (e2, t2, r2, h2, b2, f2, p2, a2) = i.next()?.into();
+    let (e3, t3, r3, h3, b3, f3, p3, a3) = i.next()?.into();
+    let (e4, t4, r4, h4, b4, f4, p4, a4) = i.next()?.into();
+    let (e5, t5, r5, h5, b5, f5, p5, a5) = i.next()?.into();
+    let (e6, t6, r6, h6, b6, f6, p6, a6) = i.next()?.into();
+    let (e7, t7, r7, h7, b7, f7, p7, a7) = i.next()?.into();
+    let (e8, t8, r8, h8, b8, f8, p8, a8) = i.next()?.into();
 
     Some(ChunkIncidentEnviroFactors {
         max_elevations: [e1, e2, e3, e4, e5, e6, e7, e8],
@@ -587,6 +594,7 @@ fn chunk_incident_enviro_factors(
         blockinesses: [b1, b2, b3, b4, b5, b6, b7, b8],
         flatness: [f1, f2, f3, f4, f5, f6, f7, f8],
         bump_phases: [p1, p2, p3, p4, p5, p6, p7, p8],
+        bump_amps: [a1, a2, a3, a4, a5, a6, a7, a8],
     })
 }
 
