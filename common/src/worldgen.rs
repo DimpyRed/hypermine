@@ -187,7 +187,7 @@ impl ChunkParams {
         let terracing_scale = 5.0; // This is not wavelength in number of blocks
         let elev_floor = (elev_raw / terracing_scale).floor();
         let elev_rem = elev_raw / terracing_scale - elev_floor;
-        let elev = terracing_scale * elev_floor + serp(0.0, terracing_scale, elev_rem, threshold) + 2.0 * bump.cos();
+        let elev = terracing_scale * elev_floor + serp(0.0, terracing_scale, elev_rem, threshold) + 2.0 * bump.cos() * amp.cos();
 
         let mut voxel_mat;
         let max_e;
@@ -533,6 +533,7 @@ impl EnviroFactors {
             blockiness: a.blockiness + (b.blockiness - ab.blockiness),
             flatness: a.flatness + (b.flatness - ab.flatness),
             bump_phase: a.bump_phase + (b.bump_phase - ab.bump_phase),
+            bump_amp: a.bump_amp + (b.bump_amp - ab.bump_amp),
         }
     }
 }
