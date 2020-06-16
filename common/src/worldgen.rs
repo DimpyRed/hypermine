@@ -185,7 +185,7 @@ impl ChunkParams {
         let terracing_scale = 5.0; // This is not wavelength in number of blocks
         let elev_floor = (elev_raw / terracing_scale).floor();
         let elev_rem = elev_raw / terracing_scale - elev_floor;
-        let elev = terracing_scale * elev_floor + serp(0.0, terracing_scale, elev_rem, threshold);
+        let elev = terracing_scale * elev_floor + serp(0.0, terracing_scale, elev_rem, threshold) + 2.0 * bump.cos();
 
         let mut voxel_mat;
         let max_e;
