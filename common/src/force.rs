@@ -35,14 +35,14 @@ impl ForceParams {
     ) -> na::Vector4<f64> {
         let mut velocity = *inital_velocity;
 
-        // with current collsion detection tech, we want the player to slowly rise if they are in the ground
+        // otherwise we apply air resistance and gravity
         if is_colliding {
-            return down * -self.float_speed;
+            velocity = self.collsion_drag(&velocity, down, time);
+        } else {
+            velocity = self.air_drag(&velocity, time);
+            velocity += self.gravity(down, height, time);
         }
 
-        // otherwise we apply air resistance and gravity
-        velocity += self.gravity(down, height, time);
-        velocity = self.air_drag(&velocity, time);
         velocity
     }
 
@@ -60,5 +60,16 @@ impl ForceParams {
     /// rewrites velocity to account for time spent under drag.
     fn air_drag(&self, inital_velocity: &na::Vector4<f64>, time: f64) -> na::Vector4<f64> {
         inital_velocity * self.air_drag_factor.powf(time)
+    }
+
+    fn collsion_drag(
+        &self,
+        inital_velocity: &na::Vector4<f64>,
+        down: &na::Vector4<f64>,
+        time: f64,
+    ) -> na::Vector4<f64> {
+        let ratio = 0.1_f64.powf(time);
+
+        inital_velocity * ratio + down * -self.float_speed * (1_f64 - ratio)
     }
 }

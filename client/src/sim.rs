@@ -18,7 +18,7 @@ use common::{
     Chunks, EntityId, GraphEntities, Step,
 };
 
-const CHARACTER_RADIUS: f64 = 0.10_f64;
+const CHARACTER_RADIUS: f64 = 0.20_f64;
 const CHARACTER_SLOWDOWN_FACTOR: f32 = 6_f32;
 
 /// Game state
@@ -304,12 +304,19 @@ impl Sim {
 
     pub fn view(&self) -> Position {
         let mut result = *self.prediction.predicted();
-        result.local *= self.orientation.to_homogeneous();
+        let rotation = self.orientation.to_homogeneous();
+        let rotated_character_velocity = rotation.try_inverse().unwrap() * self.character_velocity;
+        result.local *= rotation;
         if let Some(ref params) = self.params {
             // Apply input that hasn't been sent yet
             let (direction, speed) = sanitize_motion_input(
                 // TODO: Incorparate the persistent velocity into the view calculations.
-                self.average_velocity / CHARACTER_SLOWDOWN_FACTOR,
+                self.average_velocity / CHARACTER_SLOWDOWN_FACTOR
+                    - na::Vector3::new(
+                        rotated_character_velocity[0],
+                        rotated_character_velocity[1],
+                        rotated_character_velocity[2],
+                    ) / params.movement_speed,
             );
             // We multiply by the entire timestep rather than the time so far because
             // self.average_velocity is always over the entire timestep, filling in zeroes for the
@@ -347,7 +354,7 @@ impl Sim {
             gravity_intensity: params.gravity_intensity,
             air_drag_factor: params.drag_factor,
             gravity_type: params.gravity_method,
-            float_speed: 0.05_f64,
+            float_speed: 0_f64,
         };
 
         // eventually this should be expanded to work on every entity with a physics property, but for now it is just the player
