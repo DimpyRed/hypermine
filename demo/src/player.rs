@@ -90,24 +90,34 @@ impl<'a> PlayerPhysicsPass<'a> {
             self.input.rotation_axis * self.player.rotation_speed * self.input.dt,
         );
 
-        // Jumping
-        if self.player.ground_normal.is_some() && self.input.y_axis > 0.0 {
-            let relative_down = self.get_relative_down();
-            let horizontal_vel = self.player.vel.project(&relative_down);
-            self.player.vel = horizontal_vel - relative_down * 0.4;
-            self.player.ground_normal = None;
-        }
+        let jump_impulse = 0.4;
+        let jumping = self.player.ground_normal.is_some() && self.input.y_axis > 0.0;
 
-        // Apply input to velocity
+
+        // Jumping
         if let Some(ground_normal) = self.player.ground_normal {
+            
+            
+            // jumping
+            if jumping {
+                let perpendicular_vel = self.player.vel.project(&ground_normal);
+                self.player.vel = perpendicular_vel + ground_normal * jump_impulse;
+            }
+
             let mut target_unit_vel =
                 na::Vector3::new(ground_normal.y, -ground_normal.x, 0.) * self.input.x_axis;
             if target_unit_vel.norm_squared() > 1. {
                 target_unit_vel.normalize_mut();
             }
 
-            let target_dvel = target_unit_vel * self.player.max_ground_speed - self.player.vel;
-            let ground_acceleration_impulse = self.player.ground_acceleration * self.input.dt;
+            // Apply input to velocity
+            let target_dvel = target_unit_vel * self.player.max_ground_speed - self.player.vel.project(&ground_normal);
+            
+            let ground_acceleration_impulse = match jumping {
+                true => jump_impulse * 1.2,
+                false => self.player.ground_acceleration * self.input.dt,
+            } ;
+
             if target_dvel.norm_squared() > ground_acceleration_impulse.powi(2) {
                 self.player.vel += target_dvel.normalize() * ground_acceleration_impulse;
             } else {
@@ -121,6 +131,8 @@ impl<'a> PlayerPhysicsPass<'a> {
                 * 0.2;
             self.apply_gravity();
         }
+
+        if jumping{self.player.ground_normal = None;}
 
         // Apply velocity to position
         let mut remaining_dt = self.input.dt;
