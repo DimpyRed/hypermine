@@ -1,3 +1,4 @@
+use crate::math;
 use crate::node::DualGraph;
 use crate::{dodeca::Vertex, graph::NodeId};
 use std::fmt;
@@ -164,46 +165,54 @@ impl ChunkBoundingBox {
         radius: f64,
         dimension: u8,
     ) -> Option<Self> {
-        let euclidean_position = {
-            let temp = chunk.node_to_chunk() * translated_position;
-            temp.xyz() / temp[3]
-        };
+        // The following code computes the bounds of the minimum-size bounding box that contains a sphere of the given
+        // radius centered at translated_position. Computing this requires solving a quadratic equation, whose solution
+        // was used to write this code. Not all intermediate values used in the computation have any intrinsic meaning.
 
-        let mut min_xyz = na::Vector3::<u32>::new(0_u32, 0_u32, 0_u32);
-        let mut max_xyz = na::Vector3::<u32>::new(0_u32, 0_u32, 0_u32);
+        // Position of entity relative to chunk corner
+        let chunk_position = chunk.node_to_dual() * translated_position;
 
-        // It's important to note that euclidean_position is measured as chunk lengths, and radius is measured in absolute units.
-        // By coincidence, an absolute unit is approximately a chunk's diameter, and only because of that there is no unit conversion here.
+        let sinh_radius = radius.sinh();
+        let common_factor = 1.0 / (chunk_position[3].powi(2) + sinh_radius.powi(2))
+            * Vertex::dual_to_chunk_factor();
 
-        // verify at least one box corner is within the chunk
-        if euclidean_position
-            .iter()
-            .all(|n| n + radius > 0_f64 && n - radius < 1_f64)
-        {
-            min_xyz.x =
-                ((euclidean_position.x - radius).max(0_f64) * dimension as f64).floor() as u32;
-            max_xyz.x =
-                ((euclidean_position.x + radius).min(1_f64) * dimension as f64).ceil() as u32;
+        let mut voxel_min = [0.0; 3];
+        let mut voxel_max = [0.0; 3];
+        let dimension_float = dimension as f64;
+        for i in 0..3 {
+            let aabb_center = chunk_position[i] * chunk_position[3];
+            let aabb_width = sinh_radius
+                * (chunk_position[3].powi(2) + sinh_radius.powi(2) - chunk_position[i].powi(2))
+                    .sqrt();
 
-            min_xyz.y =
-                ((euclidean_position.y - radius).max(0_f64) * dimension as f64).floor() as u32;
-            max_xyz.y =
-                ((euclidean_position.y + radius).min(1_f64) * dimension as f64).ceil() as u32;
+            voxel_min[i] = ((1.0 - (aabb_center + aabb_width) * common_factor).max(0.0)
+                * dimension_float)
+                .floor();
 
-            min_xyz.z =
-                ((euclidean_position.z - radius).max(0_f64) * dimension as f64).floor() as u32;
-            max_xyz.z =
-                ((euclidean_position.z + radius).min(1_f64) * dimension as f64).ceil() as u32;
-            Some(ChunkBoundingBox {
-                node,
-                chunk,
-                min_xyz,
-                max_xyz,
-                dimension,
-            })
-        } else {
-            None
+            voxel_max[i] = ((1.0 - (aabb_center - aabb_width) * common_factor).min(1.0)
+                * dimension_float)
+                .ceil();
+
+            if voxel_min[i] >= dimension_float || voxel_max[i] <= 0.0 {
+                return None;
+            }
         }
+
+        Some(ChunkBoundingBox {
+            node,
+            chunk,
+            min_xyz: na::Vector3::<u32>::new(
+                voxel_min[0] as u32,
+                voxel_min[1] as u32,
+                voxel_min[2] as u32,
+            ),
+            max_xyz: na::Vector3::<u32>::new(
+                voxel_max[0] as u32,
+                voxel_max[1] as u32,
+                voxel_max[2] as u32,
+            ),
+            dimension,
+        })
     }
 
     pub fn every_voxel(&self) -> impl Iterator<Item = u32> + '_ {

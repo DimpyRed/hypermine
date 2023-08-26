@@ -49,6 +49,12 @@ impl Side {
         SIDE_VERTICES[self as usize]
     }
 
+    /// Outward normal vector of this side
+    #[inline]
+    pub fn normal(self) -> &'static na::Vector4<f64> {
+        &SIDE_NORMALS[self as usize]
+    }
+
     /// Reflection across this side
     #[inline]
     pub fn reflection(self) -> &'static na::Matrix4<f64> {
@@ -139,19 +145,36 @@ impl Vertex {
 
     /// Transform from euclidean chunk coordinates to hyperbolic node space
     pub fn chunk_to_node(self) -> na::Matrix4<f64> {
-        let origin = na::Vector4::new(0.0, 0.0, 0.0, 1.0);
         let [a, b, c] = self.canonical_sides();
         na::Matrix4::from_columns(&[
-            a.reflection().column(3) - origin,
-            b.reflection().column(3) - origin,
-            c.reflection().column(3) - origin,
-            origin,
-        ]) * na::Matrix4::new_scaling(0.5)
+            a.normal() * a.normal()[3],
+            b.normal() * b.normal()[3],
+            c.normal() * c.normal()[3],
+            math::origin(),
+        ])
     }
 
     /// Transform from hyperbolic node space to euclidean chunk coordinates
     pub fn node_to_chunk(self) -> na::Matrix4<f64> {
         self.chunk_to_node().try_inverse().unwrap()
+    }
+
+    /// Transform from cube-centric coordinates to dodeca-centric coordinates
+    pub fn dual_to_node(self) -> &'static na::Matrix4<f64> {
+        &DUAL_TO_NODE[self as usize]
+    }
+
+    /// Transform from dodeca-centric coordinates to cube-centric coordinates
+    pub fn node_to_dual(self) -> &'static na::Matrix4<f64> {
+        &NODE_TO_DUAL[self as usize]
+    }
+
+    /// Scale factor used in conversion from cube-centric coordinates to euclidean chunk coordinates.
+    /// Scaling the x, y, and z components of a vector in cube-centric coordinates by this value
+    /// and dividing them by the w coordinate will yield chunk coordinates, but reflected such that 0
+    /// and 1 are swapped for each coordinate.
+    pub fn dual_to_chunk_factor() -> f64 {
+        (2.0 + 5.0f64.sqrt()).sqrt()
     }
 
     /// Convenience method for `self.chunk_to_node().determinant() < 0`.
@@ -180,13 +203,12 @@ lazy_static! {
         result
     };
 
-    /// Transform that moves from a neighbor to a reference node, for each side
-    static ref REFLECTIONS: [na::Matrix4<f64>; SIDE_COUNT] = {
+    /// Vector corresponding to the outer normal of each side
+    static ref SIDE_NORMALS: [na::Vector4<f64>; SIDE_COUNT] = {
         let phi = 1.25f64.sqrt() + 0.5; // golden ratio
-        let root_phi = phi.sqrt();
-        let f = math::lorentz_normalize(&na::Vector4::new(root_phi, phi * root_phi, 0.0, phi + 2.0));
+        let f = math::lorentz_normalize(&na::Vector4::new(1.0, phi, 0.0, phi.sqrt()));
 
-        let mut result = [na::zero(); SIDE_COUNT];
+        let mut result: [na::Vector4<f64>; SIDE_COUNT] = [na::zero(); SIDE_COUNT];
         let mut i = 0;
         for (x, y, z, w) in [
             (f.x, f.y, f.z, f.w),
@@ -194,17 +216,18 @@ lazy_static! {
             (f.x, -f.y, -f.z, f.w),
             (-f.x, -f.y, f.z, f.w),
         ]
-            .iter()
-            .cloned()
         {
-            for (x, y, z, w) in [(x, y, z, w), (y, z, x, w), (z, x, y, w)].iter().cloned() {
-                result[i] = math::translate(&math::origin(), &na::Vector4::new(x, y, z, w))
-                    * math::euclidean_reflect(&na::Vector4::new(x, y, z, 0.0))
-                    * math::translate(&math::origin(), &na::Vector4::new(-x, -y, -z, w));
+            for (x, y, z, w) in [(x, y, z, w), (y, z, x, w), (z, x, y, w)] {
+                result[i] = na::Vector4::new(x, y, z, w);
                 i += 1;
             }
         }
         result
+    };
+
+    /// Transform that moves from a neighbor to a reference node, for each side
+    static ref REFLECTIONS: [na::Matrix4<f64>; SIDE_COUNT] = {
+        SIDE_NORMALS.map(|r| math::reflect(&r))
     };
 
     /// Sides incident to a vertex, in canonical order
@@ -225,6 +248,25 @@ lazy_static! {
         }
         assert_eq!(vertex, 20);
         result
+    };
+
+    /// Transform that converts from cube-centric coordinates to dodeca-centric coordinates
+    static ref DUAL_TO_NODE: [na::Matrix4<f64>; VERTEX_COUNT] = {
+        let mip_origin_normal = math::mip(&math::origin(), &SIDE_NORMALS[0]); // This value is the same for every side
+        let mut result = [na::zero(); VERTEX_COUNT];
+        for i in 0..VERTEX_COUNT {
+            let [a, b, c] = VERTEX_SIDES[i];
+            let vertex_position = math::lorentz_normalize(
+                &(math::origin() - (a.normal() + b.normal() + c.normal()) * mip_origin_normal),
+            );
+            result[i] = na::Matrix4::from_columns(&[-a.normal(), -b.normal(), -c.normal(), vertex_position]);
+        }
+        result
+    };
+
+    /// Transform that converts from dodeca-centric coordinates to cube-centric coordinates
+    static ref NODE_TO_DUAL: [na::Matrix4<f64>; VERTEX_COUNT] = {
+        DUAL_TO_NODE.map(|m| m.try_inverse().unwrap())
     };
 
     /// Vertex shared by 3 sides
